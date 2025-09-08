@@ -1,0 +1,20 @@
+services:
+
+  nessie-catalog:
+    image: ghcr.io/projectnessie/nessie:0.104.10
+
+    ports:
+      - "19120:19120"
+
+    # Config from: https://projectnessie.org/guides/iceberg-rest/#configure-nessie-with-iceberg-rest
+    environment:
+      - nessie.version.store.type=IN_MEMORY # Ephemeral storage, data is lost during reset.
+      - nessie.catalog.default-warehouse=drivestats_b2
+      - nessie.catalog.warehouses.drivestats_b2.location=s3://drivestats-iceberg
+      - nessie.catalog.service.s3.default-options.region=us-west-004
+      - nessie.catalog.service.s3.default-options.access-key=urn:nessie-secret:quarkus:my-secrets-default
+      - my-secrets-default.name=0045f0571db506a0000000017
+      - my-secrets-default.secret=K004Fs/bgmTk5dgo6GAVm2Waj3Ka+TE
+      - nessie.catalog.service.s3.default-options.endpoint=https://s3.us-west-004.backblazeb2.com
+      - nessie.catalog.service.s3.default-options.path-style-access=true
+
