@@ -28,8 +28,17 @@ def _main() -> None:
 
     print(json.dumps(catalog.properties, indent=2))
 
-    # If this is blank, we probably failed to open the Catalog
     print( f"Namespaces: {catalog.list_namespaces()}")
+
+    # Try to open drivestats table
+    table = catalog.load_table( "default.drivestats" )
+    print( table.schema )
+    
+    # Check out StaticTable that reads a table straight from metadata, completely bypassing catalog.  You have my
+    #   attention. Use s3 to walk the dir and get latest version of metadata, and we can skip these shenanigans
+
+    # Looks like Backblaze writer script uses namespace of "default": https://github.com/backblaze-b2-samples/drivestats2iceberg
+
 
 
 
