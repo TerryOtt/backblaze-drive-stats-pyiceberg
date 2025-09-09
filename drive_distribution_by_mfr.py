@@ -1,5 +1,5 @@
 import argparse
-import pandas
+import pyarrow
 import pathlib
 import pyiceberg.table
 import time
@@ -81,18 +81,24 @@ def _main() -> None:
     print(f"\tStatic table opened at s3://{args.bucket_name}/{args.table_path}")
     print(f"\tTime to open table: {operation_end_time - operation_begin_time:.03f} seconds")
 
-    print("\nDoing table scan of date, model so we can get full drive mfr distribution...")
+    print("\nReading table data...")
     operation_begin_time: float = time.perf_counter()
-    scan_dataframe: pandas.DataFrame = static_table.scan(
+    batch_reader: pyarrow.RecordBatchReader = static_table.scan(
         selected_fields=('date', 'model'),
         # limit=1000,
-    ).to_pandas()
+    ).to_arrow_batch_reader()
+    operation_end_time: float = time.perf_counter()
+    print(f"\tTime to get record batch reader: {operation_end_time - operation_begin_time:.03f} seconds")
+
+    operation_begin_time: float = time.perf_counter()
+    rows_read: int = 0
+    for curr_results_batch in batch_reader:
+        rows_read += len(curr_results_batch)
+        print(f"\tRows read: {rows_read:11,}")
 
     operation_end_time: float = time.perf_counter()
-    print(f"\tTime to scan table: {operation_end_time - operation_begin_time:.03f} seconds")
+    print(f"\tTime to stream results: {operation_end_time - operation_begin_time:.03f} seconds")
 
-    print("Dataframe:")
-    print(scan_dataframe)
 
 
 if __name__ == "__main__":
