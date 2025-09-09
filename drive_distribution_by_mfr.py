@@ -1,5 +1,6 @@
 import argparse
-import pyarrow
+import datetime
+import pandas
 import pathlib
 import pyiceberg.table
 import time
@@ -81,23 +82,12 @@ def _main() -> None:
     print(f"\tStatic table opened at s3://{args.bucket_name}/{args.table_path}")
     print(f"\tTime to open table: {operation_end_time - operation_begin_time:.03f} seconds")
 
-    print("\nReading table data...")
+    print("\nReading table data to Pandas dataframe...")
     operation_begin_time: float = time.perf_counter()
-    batch_reader: pyarrow.RecordBatchReader = static_table.scan(
-        selected_fields=('date', 'model'),
-        # limit=1000,
-    ).to_arrow_batch_reader()
+    results_dataframe: pandas.DataFrame = static_table.scan( selected_fields=('date', 'model') ).to_pandas()
     operation_end_time: float = time.perf_counter()
-    print(f"\tTime to get record batch reader: {operation_end_time - operation_begin_time:.03f} seconds")
-
-    operation_begin_time: float = time.perf_counter()
-    rows_read: int = 0
-    for curr_results_batch in batch_reader:
-        rows_read += len(curr_results_batch)
-        print(f"\tRows read: {rows_read:11,}")
-
-    operation_end_time: float = time.perf_counter()
-    print(f"\tTime to stream results: {operation_end_time - operation_begin_time:.03f} seconds")
+    print(f"\tRows returned from query: {len(results_table):11,}")
+    print(f"\tTime to get results: {operation_end_time - operation_begin_time:.03f} seconds")
 
 
 
