@@ -1,6 +1,17 @@
 # backblaze-drive-stats-pyiceberg
-PyIceberg to read Apache Iceberg tables
 
-Need an r8g.4xlarge with 128GB of mem to do a full table scan.
+Reading Apache Iceberg tables and writing to local Parquet file
 
-Takes up 77GB of memory to build the pandas frame in 40 seconds
+## Usage
+
+```bash
+$ python backblaze_drive_stats_iceberg_to_parquet.py <b2_access_key> <b2_secret_access_key> <parquet_output_file> 
+```
+
+## Notes
+
+* 2025 Q2 data
+  * Need an r8g.8xlarge with 256 GB of mem
+  * Consumes 140 GB of memory with the selected columns as of 2025 Q2 data
+* Output file size: 4.3 GB 
+* Runtime: ~100 seconds

@@ -1,7 +1,8 @@
 import argparse
-import datetime
-import pandas
 import pathlib
+
+import pyarrow
+import pyarrow.parquet
 import pyiceberg.table
 import time
 
@@ -36,6 +37,8 @@ def _parse_args() -> argparse.Namespace:
                             help="Backblaze B2 Access Key" )
     arg_parser.add_argument("b2_secret_access_key",
                             help="Backblaze B2 Secret Access Key" )
+    arg_parser.add_argument("parquet_output_file",
+                            help="Path to output Parquet file")
 
     return arg_parser.parse_args()
 
@@ -57,17 +60,8 @@ def _main() -> None:
     base_filename: str = pathlib.Path(current_schema_uri).name
 
     print(f"\tCurrent schema: {base_filename}")
+    print(f"\t\tSchema URI: {current_schema_uri}")
     print(f"\tTime to retrieve schema from Backblaze B2: {operation_end_time - operation_begin_time:.03f} seconds")
-
-    # See if we can open the static table and then we're done for the day
-
-    # Need to pass properties so they know how to find that S3 URL
-    schema_properties: dict[str, str] = {
-        "s3.endpoint"           : args.s3_endpoint,
-        "s3.region"             : args.b2_region,
-        "s3.access-key-id"      : args.b2_access_key,
-        "s3.secret-access-key"  : args.b2_secret_access_key,
-    }
 
     print("\nOpening Backblaze Drive Stats Apache Iceberg table hosted in Backblaze B2...")
     operation_begin_time: float = time.perf_counter()
@@ -82,13 +76,31 @@ def _main() -> None:
     print(f"\tStatic table opened at s3://{args.bucket_name}/{args.table_path}")
     print(f"\tTime to open table: {operation_end_time - operation_begin_time:.03f} seconds")
 
-    print("\nReading table data to Pandas dataframe...")
+    print("Schema:\n")
+    print(static_table.schema())
+
+    print("\nReading table data and converting to pyarrow table...")
     operation_begin_time: float = time.perf_counter()
-    results_dataframe: pandas.DataFrame = static_table.scan( selected_fields=('date', 'model') ).to_pandas()
+    results_table: pyarrow.Table = static_table.scan(
+        selected_fields=(
+            'date', 
+            'serial_number',
+            'model',
+            'capacity_bytes',
+            'failure',
+        ) 
+    ).to_arrow()
     operation_end_time: float = time.perf_counter()
     print(f"\tRows returned from query: {len(results_table):11,}")
     print(f"\tTime to get results: {operation_end_time - operation_begin_time:.03f} seconds")
 
+
+    print("\nWriting pyarrow table to Parquet file...")
+    print(f"\tWriting to \"{args.parquet_output_file}\"")
+    operation_begin_time: float = time.perf_counter()
+    pyarrow.parquet.write_table(results_table , args.parquet_output_file )
+    operation_end_time: float = time.perf_counter()
+    print(f"\tTime to write Parquet: {operation_end_time - operation_begin_time:.03f} seconds")
 
 
 if __name__ == "__main__":

@@ -1,7 +1,6 @@
 import argparse
 import pyiceberg.table
 import s3fs
-import time
 
 
 def current_metadata_file_s3_uri( b2_access_key: str,
