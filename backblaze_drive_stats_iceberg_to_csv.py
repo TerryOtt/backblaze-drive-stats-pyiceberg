@@ -37,10 +37,9 @@ def _parse_args() -> argparse.Namespace:
     arg_parser.add_argument("b2_secret_access_key",
                             help="Backblaze B2 Secret Access Key" )
     arg_parser.add_argument("csv_output_file",
-                            help="Path to output CSVsd file")
+                            help="Path to output CSV file")
 
     return arg_parser.parse_args()
-
 
 
 def _main() -> None:
@@ -95,6 +94,7 @@ def _main() -> None:
 
     # Try CSV write
     print("\nWriting pyarrow table to CSV...")
+    print("\tWriting CSV data to \"{args.csv_output_file}\"")
     operation_begin_time: float = time.perf_counter()
     pyarrow.csv.write_csv(pyarrow_table, args.csv_output_file)
     operation_end_time: float = time.perf_counter()
