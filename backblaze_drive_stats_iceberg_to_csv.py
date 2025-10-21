@@ -1,6 +1,7 @@
 import argparse
-import fastavro
 import pathlib
+import pyarrow
+import pyarrow.csv
 import pyiceberg.table
 import time
 
@@ -35,10 +36,11 @@ def _parse_args() -> argparse.Namespace:
                             help="Backblaze B2 Access Key" )
     arg_parser.add_argument("b2_secret_access_key",
                             help="Backblaze B2 Secret Access Key" )
-    arg_parser.add_argument("avro_output_file",
-                            help="Path to output Avro file")
+    arg_parser.add_argument("csv_output_file",
+                            help="Path to output CSVsd file")
 
     return arg_parser.parse_args()
+
 
 
 def _main() -> None:
@@ -77,75 +79,26 @@ def _main() -> None:
     # print("Schema:\n")
     # print(static_table.schema())
 
-    backblaze_drive_stats_avro_schema = {
-        'name': 'Backblaze Drive Stats Record',
-        'type': 'record',
-        'fields': [
-            {
-                'name': 'date',
-                'type': 'string',
-            },
-
-            {
-                'name': 'serial_number',
-                'type': 'string',
-            },
-
-            {
-                'name': 'model',
-                'type': 'string',
-            },
-
-            {
-                'name': 'capacity_bytes',
-                'type': 'long',
-            },
-
-            {
-                'name': 'failure',
-                'type': 'boolean',
-            },
-        ]
-    }
-    parsed_schema = fastavro.parse_schema(backblaze_drive_stats_avro_schema)
-
-    print("\nReading table incrementally with pyarrow batches and writing to Avro output file...")
+    print("\nReading Iceberg table to pyarrow table...")
     operation_begin_time: float = time.perf_counter()
-
-    # Open in write mode to truncate if it exists, then immediately close
-    with open(args.avro_output_file, "wb") as _:
-        pass
-
-    with open(args.avro_output_file, "a+b") as avro_handle:
-
-        for record_batch in static_table.scan(
-            selected_fields=(
-                'date',
-                'serial_number',
-                'model',
-                'capacity_bytes',
-                'failure',
-            )
-        ).to_arrow_batch_reader():
-            avro_queue = []
-            for drive_entry in record_batch.to_pylist():
-                avro_queue_entry = {
-                    'date': drive_entry['date'].isoformat(),
-                    'serial_number': drive_entry['serial_number'],
-                    'model': drive_entry['model'],
-                    'capacity_bytes': drive_entry['capacity_bytes'],
-                }
-                if drive_entry['failure'] == 1:
-                    avro_queue_entry['failure'] = True
-                else:
-                    avro_queue_entry['failure'] = False
-
-                avro_queue.append(avro_queue_entry)
-
-            fastavro.writer(avro_handle, parsed_schema, avro_queue)
-
+    pyarrow_table: pyarrow.Table = static_table.scan(
+        selected_fields=(
+            'date',
+            'serial_number',
+            'model',
+            'capacity_bytes',
+            'failure',
+        )
+    ).to_arrow()
     operation_end_time: float = time.perf_counter()
-    print(f"\tTime to read Iceberg table and write to Avro: {operation_end_time - operation_begin_time:.03f} seconds")
+    print(f"\tTime to create pyarrow table: {operation_end_time - operation_begin_time:.03f} seconds")
+
+    # Try CSV write
+    print("\nWriting pyarrow table to CSV...")
+    operation_begin_time: float = time.perf_counter()
+    pyarrow.csv.write_csv(pyarrow_table, args.csv_output_file)
+    operation_end_time: float = time.perf_counter()
+    print(f"\tTime to write CSV: {operation_end_time - operation_begin_time:.03f} seconds")
 
 
 if __name__ == "__main__":
